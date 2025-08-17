@@ -9,6 +9,12 @@ from .filters import CustomerFilter, ProductFilter, OrderFilter
 import re
 
 
+class Query(graphene.ObjectType):
+    hello = graphene.String()
+
+    def resolve_hello(self, info):
+        return "Hello, GraphQL!"
+
 class CustomerType(DjangoObjectType):
     class Meta:
         model = Customer
@@ -294,7 +300,192 @@ class Query(graphene.ObjectType):
             return None
 
 
-class Mutation(graphene.ObjectType):
+class CreateCustomer(graphene.Mutation):
+    class Arguments:
+        input = CustomerInput(required=True)
+    
+    customer = graphene.Field(CustomerType)
+    message = graphene.String()
+    success = graphene.Boolean()
+    
+    def mutate(self, info, input):
+        try:
+            validate_phone(input.phone)
+            
+            if Customer.objects.filter(email=input.email).exists():
+                return CreateCustomer(
+                    customer=None,
+                    message="Email already exists",
+                    success=False
+                )
+            
+            customer = Customer(
+                name=input.name,
+                email=input.email,
+                phone=input.phone
+            )
+            customer.full_clean()
+            customer.save()
+            
+            return CreateCustomer(
+                customer=customer,
+                message="Customer created successfully",
+                success=True
+            )
+        except ValidationError as e:
+            return CreateCustomer(
+                customer=None,
+                message=str(e),
+                success=False
+            )
+        except Exception as e:
+            return CreateCustomer(
+                customer=None,
+                message=f"Error creating customer: {str(e)}",
+                success=False
+            )
+
+class BulkCreateCustomers(graphene.Mutation):
+    class Arguments:
+        input = graphene.List(CustomerInput, required=True)
+    
+    customers = graphene.List(CustomerType)
+    errors = graphene.List(graphene.String)
+    
+    def mutate(self, info, input):
+        customers = []
+        errors = []
+        
+        for i, customer_data in enumerate(input):
+            try:
+                validate_phone(customer_data.phone)
+                
+                if Customer.objects.filter(email=customer_data.email).exists():
+                    errors.append(f"Customer {i+1}: Email already exists")
+                    continue
+                
+                customer = Customer(
+                    name=customer_data.name,
+                    email=customer_data.email,
+                    phone=customer_data.phone
+                )
+                customer.full_clean()
+                customer.save()
+                customers.append(customer)
+                
+            except ValidationError as e:
+                errors.append(f"Customer {i+1}: {str(e)}")
+            except Exception as e:
+                errors.append(f"Customer {i+1}: Error creating customer - {str(e)}")
+        
+        return BulkCreateCustomers(customers=customers, errors=errors)
+
+class CreateProduct(graphene.Mutation):
+    class Arguments:
+        input = ProductInput(required=True)
+    
+    product = graphene.Field(ProductType)
+    message = graphene.String()
+    success = graphene.Boolean()
+    
+    def mutate(self, info, input):
+        try:
+            if input.price <= 0:
+                return CreateProduct(
+                    product=None,
+                    message="Price must be positive",
+                    success=False
+                )
+            
+            if input.stock is not None and input.stock < 0:
+                return CreateProduct(
+                    product=None,
+                    message="Stock cannot be negative",
+                    success=False
+                )
+            
+            product = Product(
+                name=input.name,
+                price=input.price,
+                stock=input.stock or 0
+            )
+            product.full_clean()
+            product.save()
+            
+            return CreateProduct(
+                product=product,
+                message="Product created successfully",
+                success=True
+            )
+        except ValidationError as e:
+            return CreateProduct(
+                product=None,
+                message=str(e),
+                success=False
+            )
+        except Exception as e:
+            return CreateProduct(
+                product=None,
+                message=f"Error creating product: {str(e)}",
+                success=False
+            )
+
+class CreateOrder(graphene.Mutation):
+    class Arguments:
+        input = OrderInput(required=True)
+    
+    order = graphene.Field(OrderType)
+    message = graphene.String()
+    success = graphene.Boolean()
+    
+    def mutate(self, info, input):
+        try:
+            customer = Customer.objects.get(id=input.customer_id)
+        except Customer.DoesNotExist:
+            return CreateOrder(
+                order=None,
+                message="Customer not found",
+                success=False
+            )
+        
+        if not input.product_ids:
+            return CreateOrder(
+                order=None,
+                message="At least one product must be selected",
+                success=False
+            )
+        
+        try:
+            products = Product.objects.filter(id__in=input.product_ids)
+            if len(products) != len(input.product_ids):
+                return CreateOrder(
+                    order=None,
+                    message="One or more products not found",
+                    success=False
+                )
+            
+            with transaction.atomic():
+                order = Order(customer=customer)
+                if input.order_date:
+                    order.order_date = input.order_date
+                order.save()
+                
+                order.products.set(products)
+                total = sum(product.price for product in products)
+                order.total_amount = total
+                order.save()
+            
+            return CreateOrder(
+                order=order,
+                message="Order created successfully",
+                success=True
+            )
+        except Exception as e:
+            return CreateOrder(
+                order=None,
+                message=f"Error creating order: {str(e)}",
+                success=False
+            )
     create_customer = CreateCustomer.Field()
     bulk_create_customers = BulkCreateCustomers.Field()
     create_product = CreateProduct.Field()
