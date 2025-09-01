@@ -13,4 +13,4 @@ print(deleted[0])
 ")
 
 # Log the number of deleted customers
-echo "$TIMESTAMP - Deleted $DELETED_COUNT inactive customers" >> /tmp/customer_cleanup_log.txt
+echo "$TIMESTAMP - count: $DELETED_COUNT" >> /tmp/customer_cleanup_log.txt
