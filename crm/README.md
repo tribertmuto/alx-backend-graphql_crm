@@ -46,18 +46,18 @@ This document provides step-by-step instructions to set up and run the CRM Djang
 
 ## Task Management
 
-- The application includes a Celery task `generatecrmreport` defined in `crm/tasks.py`
-- This task logs messages to `/tmp/crmreportlog.txt`
+- The application includes a Celery task `generate_crm_report` defined in `crm/tasks.py`
+- This task logs messages to `/tmp/crm_report_log.txt`
 - You can trigger the task manually or schedule it using Celery Beat
 
 ## Verification
 
 1. **Check Celery Worker**: Ensure the worker is running and connected to Redis
 2. **Check Celery Beat**: Ensure the scheduler is running
-3. **Verify Logs**: Check `/tmp/crmreportlog.txt` for task execution logs
+3. **Verify Logs**: Check `/tmp/crm_report_log.txt` for task execution logs
 4. **Test Task**: You can manually run the task using:
    ```
-   python manage.py shell -c "from crm.tasks import generatecrmreport; generatecrmreport.delay()"
+   python manage.py shell -c "from crm.tasks import generate_crm_report; generate_crm_report.delay()"
    ```
 
 ## Configuration

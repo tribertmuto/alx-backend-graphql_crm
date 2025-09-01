@@ -4,3 +4,4 @@ graphene-django
 celery
 django-celery-beat
 redis
+requests
