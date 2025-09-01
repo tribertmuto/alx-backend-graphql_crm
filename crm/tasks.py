@@ -4,8 +4,8 @@ import requests
 from celery import shared_task
 
 @shared_task
-def generate_crm_report():
-    log_file = '/tmp/crm_report_log.txt'
+def generatecrmreport():
+    log_file = '/tmp/crmreportlog.txt'
     try:
         with open(log_file, 'a') as f:
             f.write(f'{datetime.now()}: CRM report generated successfully.\n')
