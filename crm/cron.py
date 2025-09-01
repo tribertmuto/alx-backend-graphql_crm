@@ -1,6 +1,7 @@
 import datetime
 from gql import Client, gql
 from gql.transport.requests import RequestsHTTPTransport
+from crm.models import Product
 
 def log_crm_heartbeat():
     timestamp = datetime.datetime.now().strftime('%d/%m/%Y-%H:%M:%S')
